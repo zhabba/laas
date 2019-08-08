@@ -1,0 +1,128 @@
+---
+- hosts: all
+  vars:
+    user:
+  become: yes
+  remote_user: "{{ ssh_user }}"
+  become_user: root
+  become_method: sudo
+
+  tasks:
+  - set_fact:
+      host_arch: "{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"
+
+  - name: "Configure locales"
+    shell: |
+      export LANGUAGE=en_US.UTF-8 \
+      && export LANG=en_US.UTF-8 \
+      && export LC_ALL=en_US.UTF-8 \
+      && locale-gen --purge en_US.UTF-8 \
+      && dpkg-reconfigure --frontend noninteractive locales
+  
+  - name: "Configure hosts file"
+    lineinfile:
+      path: "/etc/hosts"
+      line: "127.0.0.1  {{ ansible_hostname }}"
+      state: present
+
+  - name: "Remove docker.io and similar"
+    apt:
+      name:
+        - docker
+        - docker-engine
+        - docker.io
+        - containerd
+        - runc
+      state: absent
+      purge: yes
+
+  - name: "Install required packages"
+    apt:
+      update_cache: yes
+      name:
+        - apt-transport-https
+        - ca-certificates
+        - curl
+        - gnupg-agent
+        - software-properties-common
+      state: present
+
+  - name: "Add docker-ce repository"
+    apt_repository:
+      repo: "deb [arch={{ host_arch }}] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+      state: present
+      filename: docker-ce
+
+  - name: "Install docker-ce"
+    apt:
+      update_cache: yes
+      allow_unauthenticated: yes
+      name:
+        - docker-ce
+        - docker-ce-cli
+        - containerd.io
+      state: present
+
+  - name: "Configure docker daemon DNS"
+    copy:
+      content: |
+        {
+          "insecure-registries": ["myregistry:10001", "myregistry:10001"],
+          "dns": ["8.8.8.8"]
+        }
+      dest: "/etc/docker/daemon.json"
+
+  - name: "Restart docker service to apply new configuration"
+    service:
+      name: "docker"
+      state: "restarted"
+
+  - name: "Add useful aliases"
+    lineinfile:
+      path: "/root/.bashrc"
+      line: |
+        [ -z "$TMUX" ] && { tmux attach || exec tmux new-session;}
+        alias d='docker'
+        alias dim='docker images'
+        alias dps='docker ps -a'
+        alias drmi='docker rmi'
+        alias drm='docker rm'
+        alias drun='docker run --rm -it'
+        alias dst='docker stop'
+        alias dr='sudo systemctl restart docker'
+        alias dvl='docker volume ls'
+        alias dnl='docker network ls'
+        alias dvp='docker volume prune'
+        alias dnp='docker network prune'
+        alias g='git'
+        alias gs='git status'
+        alias gcm='git checkout master'
+        alias gcb='git checkout -'
+        export LANGUAGE=en_US.UTF-8
+        export LANG=en_US.UTF-8
+        export LC_ALL=en_US.UTF-8
+      state: present
+
+  - name: "Install additional packages"
+    apt:
+      update_cache: yes
+      name:
+        - iptables
+        - libffi-dev
+        - libssl-dev
+        - openjdk-8-jdk
+        - maven
+        - git
+        - vim
+        - tmux
+        - mc
+        - python-pip
+      state: present
+
+  - name: "Install docker-compose by pip"
+    pip:
+      name: docker-compose
+      state: present
+
+  - name: "Configure iptables"
+    shell: iptables -P FORWARD ACCEPT
