@@ -11,7 +11,6 @@ variable "inventory" {
   default = "./hosts/hosts"
 }
 
-
 variable "playbook" {
   type = "string"
   default = "./lab_afterbooking/initial_setup.yml"
@@ -29,6 +28,7 @@ resource "null_resource" "laas" {
     host        = "${var.ssh_host}"
     private_key = "${file("${var.ssh_key}")}"
   }
+
   provisioner "remote-exec" {
     inline = [
       "sudo apt -qq update -y",
@@ -42,7 +42,8 @@ resource "null_resource" "laas" {
 
   provisioner "local-exec" {
     command = "ansible-playbook ${var.playbook} -e \"ssh_user=${var.ssh_user}\" -i ${var.inventory}"
+    environment = {
+      ANSIBLE_HOST_KEY_CHECKING = "False"
+    }
   }
 }
-
-
