@@ -2,7 +2,7 @@ variable "ssh_user" {
   type    = "string"
   default = "opnfv"
 }
-variable "ssh_host" {
+variable "ssh_hosts" {
   type = "string"
 }
 
@@ -22,10 +22,11 @@ variable "ssh_key" {
 }
 
 resource "null_resource" "laas" {
+  count = "${length(split(",", var.ssh_hosts))}"
   connection {
     type        = "ssh"
     user        = "${var.ssh_user}"
-    host        = "${var.ssh_host}"
+    host        = "${element(split(",", var.ssh_hosts), count.index)}"
     private_key = "${file("${var.ssh_key}")}"
   }
 
@@ -37,7 +38,10 @@ resource "null_resource" "laas" {
   }
 
   provisioner "local-exec" {
-    command = "echo \"${var.ssh_host}\" > ${var.inventory}"
+    command = "echo \"\" > ${var.inventory} && echo \"${element(split(",", var.ssh_hosts), count.index)}\" >> ${var.inventory}"
+    environment = {
+      count = "${length(split(",", var.ssh_hosts))}"
+    }
   }
 
   provisioner "local-exec" {
