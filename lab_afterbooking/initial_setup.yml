@@ -4,8 +4,8 @@
     user:
   become: yes
   remote_user: "{{ ssh_user }}"
-  become_user: root
-  become_method: sudo
+  # become_user: root
+  # become_method: sudo
 
   tasks:
   - set_fact:
@@ -23,6 +23,12 @@
     lineinfile:
       path: "/etc/hosts"
       line: "127.0.0.1  {{ ansible_hostname }}"
+      state: present
+    
+  - name: Add an Apt signing key, uses whichever key is at the URL
+    apt_key:
+      id: "9DC858229FC7DD38854AE2D88D81803C0EBFCD88"
+      keyserver: keyserver.ubuntu.com
       state: present
 
   - name: "Remove docker.io and similar"
@@ -50,6 +56,7 @@
   - name: "Add docker-ce repository"
     apt_repository:
       repo: "deb [arch={{ host_arch }}] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+      update_cache: false
       state: present
       filename: docker-ce
 
@@ -77,52 +84,56 @@
       name: "docker"
       state: "restarted"
 
-  - name: "Add useful aliases"
-    lineinfile:
-      path: "/root/.bashrc"
-      line: |
-        [ -z "$TMUX" ] && { tmux attach || exec tmux new-session;}
-        alias d='docker'
-        alias dim='docker images'
-        alias dps='docker ps -a'
-        alias drmi='docker rmi'
-        alias drm='docker rm'
-        alias drun='docker run --rm -it'
-        alias dst='docker stop'
-        alias dr='sudo systemctl restart docker'
-        alias dvl='docker volume ls'
-        alias dnl='docker network ls'
-        alias dvp='docker volume prune'
-        alias dnp='docker network prune'
-        alias g='git'
-        alias gs='git status'
-        alias gcm='git checkout master'
-        alias gcb='git checkout -'
-        export LANGUAGE=en_US.UTF-8
-        export LANG=en_US.UTF-8
-        export LC_ALL=en_US.UTF-8
-      state: present
+  # - name: "Add useful aliases"
+  #   lineinfile:
+  #     path: "/root/.bashrc"
+  #     line: |
+  #       alias d='docker'
+  #       alias dim='docker images'
+  #       alias dps='docker ps -a'
+  #       alias drmi='docker rmi'
+  #       alias drm='docker rm'
+  #       alias drun='docker run --rm -it'
+  #       alias dst='docker stop'
+  #       alias dr='sudo systemctl restart docker'
+  #       alias dvl='docker volume ls'
+  #       alias dnl='docker network ls'
+  #       alias dvp='docker volume prune'
+  #       alias dnp='docker network prune'
+  #       alias g='git'
+  #       alias gs='git status'
+  #       alias gcm='git checkout master'
+  #       alias gcb='git checkout -'
+  #       export LANGUAGE=en_US.UTF-8
+  #       export LANG=en_US.UTF-8
+  #       export LC_ALL=en_US.UTF-8
+  #     state: present
+
+# TODO: useradd deployer -m -d  /opt/deployments  -G docker
 
   - name: "Install additional packages"
     apt:
       update_cache: yes
       name:
-        - iptables
+        - build-essential
+        - python-dev
         - libffi-dev
         - libssl-dev
-        - openjdk-8-jdk
-        - maven
         - git
         - vim
         - tmux
         - mc
-        # - python-pip
+        - python-setuptools
+        - python-pip
       state: present
 
-  # - name: "Install docker-compose by pip"
-  #   pip:
-  #     name: docker-compose
-  #     state: present
+  - name: "Install docker-compose by pip"
+    pip:
+      extra_args: "--force --upgrade"
+      name:
+        - wheel
+        - docker-compose
+      state: present
 
-  - name: "Configure iptables"
-    shell: iptables -P FORWARD ACCEPT
+  # - name: "Configure iptables"
+  #   shell: iptables -P FORWARD ACCEPT

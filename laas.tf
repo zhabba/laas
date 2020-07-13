@@ -1,23 +1,23 @@
 variable "ssh_user" {
-  type    = "string"
-  default = "opnfv"
+  type    = string
+  default = "root"
 }
 variable "ssh_hosts" {
-  type = "string"
+  type = string
 }
 
 variable "inventory" {
-  type = "string"
+  type = string
   default = "./hosts/hosts"
 }
 
 variable "playbook" {
-  type = "string"
+  type = string
   default = "./lab_afterbooking/initial_setup.yml"
 }
 
 variable "ssh_key" {
-  type = "string"
+  type = string
   default = "~/.ssh/id_rsa"
 }
 
